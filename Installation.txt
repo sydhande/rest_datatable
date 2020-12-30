@@ -72,7 +72,6 @@ export default {
 
 
 
-vue add vuetify
 
 npm install axios
 
@@ -278,3 +277,13 @@ Run and check npm run serve
 
 
 
+
+vue add vuetify
+? Choose a preset: Configure (advanced)
+? Use a pre-made template? (will replace App.vue and HelloWorld.vue) No
+? Use custom theme? No
+? Use custom properties (CSS variables)? No
+? Select icon font Material Design Icons
+? Use fonts as a dependency (for Electron or offline)? No
+? Use a-la-carte components? Yes
+? Select locale English
