@@ -1,0 +1,280 @@
+Vue CLI v4.5.9
+? Please pick a preset: Manually select features
+? Check the features needed for your project: Choose Vue version, Babel, Router, Vuex, Linter
+? Choose a version of Vue.js that you want to start the project with 2.x
+? Use history mode for router? (Requires proper server setup for index fallback in production) Yes
+? Pick a linter / formatter config: Basic
+? Pick additional lint features: Lint on save
+? Where do you prefer placing config for Babel, ESLint, etc.? In dedicated config files
+? Save this as a preset for future projects? No
+
+
+cd frontend_vue
+
+npm run serve
+
+configure vue.config.js
+
+module.exports = {
+  devServer: {
+    proxy: {
+      '^/api/': {
+        target: 'http://127.0.0.1:8000/',
+        ws: false,
+      }
+    }
+  },
+  // outputDir must be added to Django's TEMPLATE_DIRS
+  outputDir: './dist/',
+  // assetsDir must match Django's STATIC_URL
+  assetsDir: 'static',
+}
+
+Home.vue
+
+<template>
+  <div class="home">
+    <RentSitesList />
+  </div>
+</template>
+
+<script>
+// @ is an alias to /src
+import RentSitesList from '@/components/RentSitesList.vue'
+
+export default {
+  name: 'Home',
+  components: {
+    RentSitesList
+  }
+}
+</script>
+
+
+RentSitesList.vue
+
+<template>
+  <div>
+      Rentsites
+  </div>
+</template>
+
+<script>
+export default {
+    name: "rentsites-list",
+
+}
+</script>
+
+<style>
+
+</style>
+
+
+
+vue add vuetify
+
+npm install axios
+
+npm run serve
+
+
+python manage.py startapp rentsites
+
+#....below this add
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+# Vue project location
+FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend_vue')
+
+# Vue assets directory (assetsDir)
+STATICFILES_DIRS = [
+    os.path.join(FRONTEND_DIR, 'dist/static'),
+]
+
+# Webpack output location containing Vue index.html file (outputDir)
+TEMPLATES[0]['DIRS'] += [
+    os.path.join(FRONTEND_DIR, 'dist'),
+]
+
+
+add setting.py in INSTALLED_APP add 'rest_framework', 'rentsites',
+
+import os
+
+in models.py add model
+
+
+class Rentsite(models.Model):
+    ssa = models.CharField(max_length=20, null=True, blank=True, default=None)
+    sdca = models.CharField(max_length=30, null=True, blank=True, default=None)
+    name = models.CharField(max_length=50, null=True, blank=True, default=None)
+
+    def __str__(self):
+        return self.name
+
+
+create serializers.py
+from rentsites.models import Rentsite
+from rest_framework import serializers
+
+class RentsitesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rentsite
+        fields = ('ssa', 'sdca', 'name','id')
+
+
+python manage.py makemigrations
+
+python manage.py migrate
+
+python manage.py createsuperuser
+
+add in admin.py
+
+from django.contrib import admin
+from rentsites.models import Rentsite
+
+# Register your models here.
+class RentsiteAdmin(admin.ModelAdmin):
+    pass
+
+admin.site.register(Rentsite, RentsiteAdmin )
+
+in views.py
+
+# views.py
+from django.http import JsonResponse
+from django.shortcuts import render
+from rest_framework import viewsets
+from rentsites.models import Rentsite
+from rentsites.serializers import RentsitesSerializer
+from rest_framework.response import Response
+
+
+def index(request):
+    return render(request, template_name='index.html')
+
+
+class RentsitesViewSet(viewsets.ModelViewSet):
+    queryset = Rentsite.objects.all()
+    serializer_class = RentsitesSerializer
+
+in urls.py
+
+from django.contrib import admin
+from django.urls import path
+from rentsites.views import index, RentsitesViewSet
+rentsites_list = RentsitesViewSet.as_view({
+    'get' : 'list',
+    'post' : 'create'
+})
+urlpatterns = [
+    path('', index, name='index'),
+    path('api/rentsites/', rentsites_list, name='rentsites-list'),
+    path('admin/', admin.site.urls),
+]
+
+add data through admin
+
+check http://localhost:8000/api/rentsites/
+
+http-common.js in src folder
+
+import axios from "axios";
+
+export default axios.create({
+  baseURL: "/api",
+  headers: {
+    "Content-type": "application/json"
+  }
+});
+
+in src/api cfeate RentsitesData.js
+
+
+import http from '../http-common';
+
+class RentsitesData {
+    getAll() {
+        return http.get("/rentsites/");
+    }
+}
+
+export default new RentsitesData();
+
+in store index file
+
+import Vue from 'vue'
+import Vuex from 'vuex'
+import RentsitesData from "../api/RentsitesData";
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  state: {
+    rentsites: []
+  },
+  mutations: {
+    SET_Rentsites(state, rentsitesdata) {
+      state.rentsites = rentsitesdata;
+    }
+
+  },
+  actions: {
+    getRentsites({ commit }) {
+      RentsitesData.getAll()
+      .then(response => {
+        commit('SET_Rentsites', response.data);
+        console.log(response.data);
+      })
+      .catch(e=> {
+        console.log(e)
+      })
+
+     
+    }
+  },
+  modules: {
+  }
+})
+
+
+in componenets craete RentSitesList.vue
+
+<template>
+  <div>
+      <h4>Rent sites List from API</h4>
+      <ul class="list-group">
+        <li v-for="(rentsite, index) in rentsites" :key="index">
+          {{ rentsite.name }}
+        </li>
+      </ul>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "rentsites-list",
+
+  computed: {
+    rentsites() {
+      return this.$store.state.rentsites;
+    }
+  },
+  mounted() {
+    this.$store.dispatch('getRentsites')
+  }
+
+}
+</script>
+
+<style>
+
+</style>
+
+Run and check npm run serve
+
+
+
